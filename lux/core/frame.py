@@ -580,7 +580,7 @@ class LuxDataFrame(pd.DataFrame):
 				#Observers(callback_function, listen_to_this_variable)
 				self._widget.observe(self.removeDeletedRecs, names='deletedIndices')
 
-				if len(self.recommendation) > 0:
+				if True: # len(self.recommendation) > 0:
 					# box = widgets.Box(layout=widgets.Layout(display='inline'))
 					button = widgets.Button(description="Toggle Pandas/Lux",layout=widgets.Layout(width='140px',top='5px'))
 					output = widgets.Output()
@@ -601,9 +601,9 @@ class LuxDataFrame(pd.DataFrame):
 								# b.layout.display = "inline-block"
 					button.on_click(on_button_clicked)
 					on_button_clicked(None)
-				else:
-					warnings.warn("\nLux defaults to Pandas when there are no valid actions defined.",stacklevel=2)
-					display(self.display_pandas()) 
+				# else:
+				# 	warnings.warn("\nLux defaults to Pandas when there are no valid actions defined.",stacklevel=2)
+				# 	display(self.display_pandas()) 
 		except(KeyboardInterrupt,SystemExit):
 			raise
 		except:
