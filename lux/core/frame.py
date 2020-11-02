@@ -121,27 +121,6 @@ class LuxDataFrame(pd.DataFrame):
 		super(LuxDataFrame, self)._set_item(key, value)
 		self.expire_metadata()
 		self.expire_recs()
-	@property
-	def default_display(self):
-		if (self._default_pandas_display):
-			return "pandas"
-		else:
-			return "lux"
-	@default_display.setter
-	def default_display(self, type:str) -> None:
-		"""
-		Set the widget display to show Pandas by default or Lux by default
-		Parameters
-		----------
-		type : str
-			Default display type, can take either the string `lux` or `pandas` (regardless of capitalization)
-		"""        
-		if (type.lower()=="lux"):
-			self._default_pandas_display = False
-		elif (type.lower()=="pandas"):
-			self._default_pandas_display = True
-		else: 
-			warnings.warn("Unsupported display type. Default display option should either be `lux` or `pandas`.",stacklevel=2)
 	def _infer_structure(self):
 		# If the dataframe is very small and the index column is not a range index, then it is likely that this is an aggregated data
 		is_multi_index_flag = self.index.nlevels !=1
@@ -454,7 +433,8 @@ class LuxDataFrame(pd.DataFrame):
 				action_type = rec_info["action"]
 				vlist = rec_info["collection"]
 				if (rec_df._plot_config):
-					for vis in rec_df.current_vis: vis._plot_config = rec_df.plot_config
+					if (rec_df.current_vis):
+						for vis in rec_df.current_vis: vis._plot_config = rec_df.plot_config
 					for vis in vlist: vis._plot_config = rec_df.plot_config
 				if (len(vlist)>0):
 					rec_df.recommendation[action_type]  = vlist
@@ -479,8 +459,8 @@ class LuxDataFrame(pd.DataFrame):
 		
 		Notes
 		-----
-		Convert the _exportedVisIdxs dictionary into a programmable VisList
-		Example _exportedVisIdxs : 
+		Convert the _selectedVisIdxs dictionary into a programmable VisList
+		Example _selectedVisIdxs : 
 			{'Correlation': [0, 2], 'Occurrence': [1]}
 		indicating the 0th and 2nd vis from the `Correlation` tab is selected, and the 1st vis from the `Occurrence` tab is selected.
 		
@@ -498,7 +478,7 @@ class LuxDataFrame(pd.DataFrame):
 						"See more: https://lux-api.readthedocs.io/en/latest/source/guide/FAQ.html#troubleshooting-tips"
 						, stacklevel=2)
 			return []
-		exported_vis_lst = self._widget._exportedVisIdxs
+		exported_vis_lst = self._widget._selectedVisIdxs
 		exported_vis = [] 
 		if (exported_vis_lst=={}):
 			if self._saved_export:
@@ -530,13 +510,32 @@ class LuxDataFrame(pd.DataFrame):
 				,stacklevel=2)
 			return []
 
-	def removeDeletedRecs(self, change):
+	def remove_deleted_recs(self, change):
 		for action in self._widget.deletedIndices:
 			deletedSoFar = 0
 			for index in self._widget.deletedIndices[action]:
 				self.recommendation[action].remove_index(index - deletedSoFar)
 				deletedSoFar += 1
 
+	def set_intent_on_click(self, change):
+		from IPython.display import display, clear_output
+		from lux.processor.Compiler import Compiler
+
+		intent_action = list(self._widget.selectedIntentIndex.keys())[0]
+		vis = self.recommendation[intent_action][self._widget.selectedIntentIndex[intent_action][0]]
+		self.set_intent_as_vis(vis)
+
+		self.maintain_metadata()
+		self.current_vis = Compiler.compile_intent(self, self._intent)
+		self.maintain_recs()
+
+		with self.output:
+			clear_output()
+			display(self._widget)
+		
+		self._widget.observe(self.remove_deleted_recs, names='deletedIndices')
+		self._widget.observe(self.set_intent_on_click, names='selectedIntentIndex')
+		
 	def _repr_html_(self):
 		from IPython.display import display
 		from IPython.display import clear_output
@@ -572,24 +571,28 @@ class LuxDataFrame(pd.DataFrame):
 					from lux.processor.Compiler import Compiler
 					self.current_vis = Compiler.compile_intent(self, self._intent)
 
-				self._toggle_pandas_display = self._default_pandas_display # Reset to Pandas Vis everytime            
+				if (lux.config.default_display == "lux"):
+					self._toggle_pandas_display = False
+				else:
+					self._toggle_pandas_display = True
 				
 				# df_to_display.maintain_recs() # compute the recommendations (TODO: This can be rendered in another thread in the background to populate self._widget)
 				self.maintain_recs()
 
 				#Observers(callback_function, listen_to_this_variable)
-				self._widget.observe(self.removeDeletedRecs, names='deletedIndices')
+				self._widget.observe(self.remove_deleted_recs, names='deletedIndices')
+				self._widget.observe(self.set_intent_on_click, names='selectedIntentIndex')
 
 				if True: # len(self.recommendation) > 0:
 					# box = widgets.Box(layout=widgets.Layout(display='inline'))
 					button = widgets.Button(description="Toggle Pandas/Lux",layout=widgets.Layout(width='140px',top='5px'))
-					output = widgets.Output()
+					self.output = widgets.Output()
 					# box.children = [button,output]
 					# output.children = [button]
 					# display(box)
-					display(button,output)
+					display(button, self.output)
 					def on_button_clicked(b):
-						with output:
+						with self.output:
 							if (b):
 								self._toggle_pandas_display = not self._toggle_pandas_display
 							clear_output()
@@ -601,9 +604,10 @@ class LuxDataFrame(pd.DataFrame):
 								# b.layout.display = "inline-block"
 					button.on_click(on_button_clicked)
 					on_button_clicked(None)
-				# else:
-				# 	warnings.warn("\nLux defaults to Pandas when there are no valid actions defined.",stacklevel=2)
-				# 	display(self.display_pandas()) 
+				else:
+					warnings.warn("\nLux defaults to Pandas when there are no valid actions defined.",stacklevel=2)
+					display(self.display_pandas()) 
+					
 		except(KeyboardInterrupt,SystemExit):
 			raise
 		except:
