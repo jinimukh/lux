@@ -696,14 +696,8 @@ class LuxDataFrame(pd.DataFrame):
 
                 # Observers(callback_function, listen_to_this_variable)
                 self._widget.observe(self.remove_deleted_recs, names="deletedIndices")
-<<<<<<< HEAD
-                self._widget.observe(
-                    self.set_intent_on_click, names="selectedIntentIndex"
-                )
-                self.recommendation = {}
-=======
                 self._widget.observe(self.set_intent_on_click, names="selectedIntentIndex")
->>>>>>> ea208337bacdfa612a5473dc4bbf33033fa40eb0
+                self.recommendation={}
 
                 if len(self.recommendation) > 0:
                     # box = widgets.Box(layout=widgets.Layout(display='inline'))
@@ -735,7 +729,7 @@ class LuxDataFrame(pd.DataFrame):
                     button = widgets.Button(
                         description="Toggle Pandas/Lux",
                         layout=widgets.Layout(width="140px", top="5px"),
-                        tooltip="Lux defaults to Pandas when no vallid actions defined. This could be because the dataframe is too small",
+                        tooltip="Lux defaults to Pandas when no valid actions are defined. This could be because the dataframe is too small.",
                         disabled=True,
                     )
                     self.output = widgets.Output()
