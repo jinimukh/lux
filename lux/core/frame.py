@@ -724,6 +724,7 @@ class LuxDataFrame(pd.DataFrame):
                 self._widget.observe(
                     self.set_intent_on_click, names="selectedIntentIndex"
                 )
+                self.recommendation = {}
 
                 if len(self.recommendation) > 0:
                     # box = widgets.Box(layout=widgets.Layout(display='inline'))
@@ -754,12 +755,15 @@ class LuxDataFrame(pd.DataFrame):
                     button.on_click(on_button_clicked)
                     on_button_clicked(None)
                 else:
-                    warnings.warn(
-                        "\nLux defaults to Pandas when there are no valid actions defined.",
-                        stacklevel=2,
+                    button = widgets.Button(
+                        description="Toggle Pandas/Lux",
+                        layout=widgets.Layout(width="140px", top="5px"),
+                        tooltip="Lux defaults to Pandas when no vallid actions defined. This could be because the dataframe is too small",
+                        disabled=True,
                     )
+                    self.output = widgets.Output()
+                    display(button, self.output)
                     display(self.display_pandas())
-
         except (KeyboardInterrupt, SystemExit):
             raise
         except:
